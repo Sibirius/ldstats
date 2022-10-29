@@ -176,6 +176,9 @@ function buildTab(tab) {
           }
         );
         break;
+      case "percents-chart":
+        buildPercentsChart(window.percents);
+        break;
       case "percents":
         createDataTable(
           "#percents-data",
@@ -584,6 +587,137 @@ function buildPositionsChart(entries) {
 
         el.addClass("off");
         $("g.ct-series-" + idx, ".ct-chart-standings").hide();
+      });
+
+      return $li;
+    })
+  );
+
+  skippedCategories.forEach(function(category) {
+    $categories.append($("<li>" + category + "</li>"));
+  });
+}
+
+function buildPercentsChart(entries) {
+  var aentries = _.sortBy(entries, "ludum");
+
+  var labels = _.map(aentries, function (entry) {
+    return "LD" + entry.ludum;
+  });
+
+  function getSeriesForCategory(category) {
+    return {
+      name: category,
+      data: _.map(aentries, function (entry) {
+        return (entry[category] && entry[category] * -1) || null;
+      }),
+    };
+  }
+
+  function hasDataPoint(serie) {
+    return serie.data.some(function(dataPoint) {
+      return dataPoint !== null;
+    });
+  }
+
+  var series = categories.map(function (category) {
+    return getSeriesForCategory(category);
+  }).filter(hasDataPoint);
+
+  var chart = new Chartist.Line(
+    ".ct-chart-percents",
+    {
+      labels: labels,
+      series: series,
+    },
+    {
+      high: -1,
+      // low: -3500,
+      chartPadding: {
+        top: 20,
+        right: 120,
+        bottom: 20,
+        left: 10,
+      },
+      axisX: {
+        showGrid: true,
+        showLabel: true,
+        offset: 20,
+        labelOffset: {
+          x: -20,
+          y: 10,
+        },
+      },
+      axisY: {
+        position: "start",
+        showGrid: true,
+        showLabel: true,
+        scaleMinSpace: 30,
+        labelInterpolationFnc: function (value) {
+          return Math.abs(value);
+        },
+      },
+    }
+  );
+
+  var $chart = $(".ct-chart-percents");
+
+  var $toolTip = $chart
+    .append('<div class="tooltip"></div>')
+    .find(".tooltip")
+    .hide();
+
+  $chart.on("mouseenter", ".ct-point", function () {
+    var $point = $(this),
+      value = $point.attr("ct:value"),
+      seriesName = $point.parent().attr("ct:series-name");
+    $toolTip.html(seriesName + "<br>" + Math.abs(value)).show();
+  });
+
+  $chart.on("mouseleave", ".ct-point", function () {
+    $toolTip.hide();
+  });
+
+  $chart.on("mousemove", function (event) {
+    $toolTip.css({
+      left:
+        (event.offsetX || event.originalEvent.layerX) -
+        $toolTip.width() / 2 -
+        10,
+      top:
+        (event.offsetY || event.originalEvent.layerY) - $toolTip.height() - 40,
+    });
+  });
+
+  var $categories = $(".percents-chart .categories");
+
+  var assignedCount = 0;
+  var skippedCategories = [];
+  $categories.empty().append(
+    categories.map(function (category) {
+      var seriesOfCategory = getSeriesForCategory(category);
+      if (!hasDataPoint(seriesOfCategory)) {
+        // we didn't generate lines for empty categories, so we should also not generate the label
+        skippedCategories.push(category);
+        return null;
+      }
+
+      var idx = String.fromCharCode(97 + assignedCount);
+      assignedCount++;
+      var name = category;
+      var $li = $("<li>" + name + "</li>");
+
+      $li.on("click", function () {
+        var el = $(this);
+
+        if (el.hasClass("off")) {
+          el.removeClass("off");
+          $("g.ct-series-" + idx, ".ct-chart-percents").show();
+          return;
+        }
+
+        el.addClass("off");
+        $("g.ct-series-" + idx, ".ct-chart-percents").hide();
       });
 
       return $li;
