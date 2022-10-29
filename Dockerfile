@@ -1,6 +1,5 @@
 FROM node:10-slim
 
-RUN npm i npm@latest -g
 RUN npm install pm2 -g
 
 RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app
